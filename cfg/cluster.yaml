@@ -1,0 +1,15 @@
+__default__:
+  account: punim0261 
+  memory: 1024
+  cores: 1
+  nodes: 1
+  partition: physical,snowy
+  time: 00:5:00
+bwa_align:
+  memory: 12288
+  cores: 4
+  #time: '32:00:00'
+sort_alignment:
+  memory: 16384
+  cores: 4
+  #time: '32:00:00'
