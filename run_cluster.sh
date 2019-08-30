@@ -4,7 +4,7 @@
 set -o errexit
 
 MAXJOBS=512
-PREFIX=test
+PREFIX=tamseq
 
 mkdir -p logs
 echo "starting live run at $(date)..."

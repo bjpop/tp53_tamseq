@@ -1,6 +1,3 @@
-genome: 'data/genome.fa'
-
-samples:
-    A: data/samples/A.fastq
-    B: data/samples/B.fastq
-    C: data/samples/C.fastq
+genome: "human_g1k_v37_decoy"
+amplicons: "TAMSEQ_TP53_amplicons.bed"
+min_vaf: "0.0001" # 1 in ten thousand 

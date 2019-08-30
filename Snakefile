@@ -1,22 +1,48 @@
+import pandas as pd
+
 configfile: "cfg/config.yaml"
 configfile: "cfg/cluster.yaml"
+
+sample_names = pd.read_table("sample_names.tsv").set_index("samples", drop=False)
 
 
 rule all:
     input:
-        "plots/quals.svg"
-        
+        'reference/{}.fasta.amb'.format(config["genome"]),
+        'reference/{}.fasta.ann'.format(config["genome"]),
+        'reference/{}.fasta.bwt'.format(config["genome"]),
+        'reference/{}.fasta.pac'.format(config["genome"]),
+        'reference/{}.fasta.sa'.format(config["genome"]),
+        #expand("sorted_reads/{sample}.bam.bai", sample=sample_names.index),
+        expand("vardict_calls/{sample}.vcf", sample=sample_names.index)
+
+       
+rule bwa_index:
+    input:
+        reference = "reference/{genome}.fasta"
+    output:
+        "reference/{genome}.fasta.amb",
+        "reference/{genome}.fasta.ann",
+        "reference/{genome}.fasta.bwt",
+        "reference/{genome}.fasta.pac",
+        "reference/{genome}.fasta.sa"
+    log:
+        "logs/bwa_index/{genome}.log"
+    params:
+        algorithm = "bwtsw"
+    shell:
+        "(bwa index -a {params.algorithm} {input.reference}) 2> {log}"
 
 
 rule bwa_align:
     input:
-        reference=config["genome"],
-        fastqs=lambda wildcards: config["samples"][wildcards.sample]
+        reference = "reference/{}.fasta".format(config["genome"]),
+        fastqs = ["fastqs/{sample}_L001_R1_001.fastq.gz", "fastqs/{sample}_L001_R2_001.fastq.gz"]
     output:
         temp("mapped_reads/{sample}.bam")
     params:
-        rg=r"@RG\tID:{sample}\tSM:{sample}",
-        cores=config["bwa_align"]["cores"],
+        rg = r"@RG\tID:{sample}\tSM:{sample}",
+        cores = config["bwa_align"]["cores"],
     log:
         "logs/bwa_mem/{sample}.log"
     shell:
@@ -43,22 +69,40 @@ rule samtools_index:
         "samtools index {input}"
 
 
-rule bcftools_call:
+rule vardict:
     input:
-        reference=config["genome"],
-        bam=expand("sorted_reads/{sample}.bam", sample=config["samples"]),
-        bai=expand("sorted_reads/{sample}.bam.bai", sample=config["samples"])
+        bam = "sorted_reads/{sample}.bam",
+        reference = "reference/{}.fasta".format(config["genome"]),
     output:
-        "calls/all.vcf"
+        "vardict_calls/{sample}.tsv"
+    params:
+        min_vaf = config["min_vaf"],
+        amplicons_bed = config["amplicons"]
+    log:
+        "logs/vardict/{sample}.log"
     shell:
-        "samtools mpileup -g -f {input.reference} {input.bam} | "
-        "bcftools call -mv - > {output}"
+        "(vardict-java -G {input.reference} -f {params.min_vaf} -N {wildcards.sample} -b {input.bam} TAMSEQ_TP53_amplicons.bed > {output}) 2> {log}"
 
 
-rule plot_quals:
+rule vardict_strand_bias:
     input:
-        "calls/all.vcf"
+        tsv = "vardict_calls/{sample}.tsv",
     output:
-        "plots/quals.svg"
-    script:
-        "scripts/plot-quals.py"
+        "vardict_calls/{sample}.strandbias.tsv"
+    log:
+        "logs/vardict/{sample}.strandbias.log"
+    shell:
+        "(cat {input.tsv} | teststrandbias.R > {output}) 2> {log}"
+
+
+rule vardict_vcf:
+    input:
+        tsv = "vardict_calls/{sample}.strandbias.tsv",
+    output:
+        "vardict_calls/{sample}.vcf"
+    params:
+        min_vaf = config["min_vaf"] 
+    log:
+        "logs/vardict/{sample}.vcf.log"
+    shell:
+        "(cat {input.tsv} | var2vcf_valid.pl -a -A -N {wildcards.sample} -E -f {params.min_vaf} > {output}) 2> {log}"
