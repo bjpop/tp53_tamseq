@@ -14,7 +14,8 @@ rule all:
         'reference/{}.fasta.pac'.format(config["genome"]),
         'reference/{}.fasta.sa'.format(config["genome"]),
         #expand("sorted_reads/{sample}.bam.bai", sample=sample_names.index),
-        expand("vardict_calls/{sample}.vcf", sample=sample_names.index)
+        #expand("vardict_calls/{sample}.vcf", sample=sample_names.index)
+        expand("vep_annotate/{sample}.vcf", sample=sample_names.index)
 
        
 rule bwa_index:
@@ -106,3 +107,16 @@ rule vardict_vcf:
         "logs/vardict/{sample}.vcf.log"
     shell:
         "(cat {input.tsv} | var2vcf_valid.pl -a -A -N {wildcards.sample} -E -f {params.min_vaf} > {output}) 2> {log}"
+
+
+rule vep_annotate:
+    input:
+        vcf = "vardict_calls/{sample}.vcf",
+        reference = "reference/{}.fasta".format(config["genome"]),
+    output:
+        "vep_annotate/{sample}.vcf"
+    params:
+    log:
+        "logs/vep/{sample}.vcf.log"
+    shell:
+        "(vep --cache --offline --dir_cache ./vep_cache/ --fasta {input.reference} -i {input.vcf} --sift b --polyphen b --symbol --numbers --biotype --total_length --hgvs --exclude_predicted --af_gnomad --format vcf --force_overwrite --vcf --fields Consequence,IMPACT,Codons,Amino_acids,Gene,SYMBOL,Feature,EXON,PolyPhen,SIFT,Protein_position,BIOTYPE,HGVSc,HGVSp,cDNA_position,CDS_position,gnomAD_AF,gnomAD_AFR_AF,gnomAD_AMR_AF,gnomAD_ASJ_AF,gnomAD_EAS_AF,gnomAD_FIN_AF,gnomAD_NFE_AF,gnomAD_OTH_AF,gnomAD_SAS_AF,MaxEntScan_alt,MaxEntScan_diff,MaxEntScan_ref,PICK --flag_pick -o {wildcards.sample}.vcf) 2> {log}"

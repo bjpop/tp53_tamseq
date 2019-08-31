@@ -14,3 +14,4 @@ dependencies:
   - pysam =0.15.0
   - pandas =0.25.1
   - vardict-java =1.6.0
+  - ensembl-vep=97.3-0

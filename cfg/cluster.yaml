@@ -21,3 +21,6 @@ samtools_index:
 vardict:
   memory: 4000 
   time: '0:30:00'
+vep_annotate:
+  memory: 8000 
+  time: '0:30:00'

@@ -59,3 +59,9 @@ conda env update --file environment.yaml
 ```
 snakemake -R `snakemake --list-input-changes`
 ```
+
+# Draw a diagram of the workflow
+
+```
+snakemake --dag vardict_calls/sample.vcf | dot -Tpng > dag.png
+```
